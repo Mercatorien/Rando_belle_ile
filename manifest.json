@@ -1,7 +1,8 @@
 {
   "name": "Rando Belle-Île",
   "short_name": "Rando",
-  "start_url": "index.html",
+  "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#0078A8",
@@ -9,6 +10,12 @@
     {
       "src": "icon.png",
       "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
       "type": "image/png"
     }
   ]
