@@ -1,4 +1,3 @@
-/* Remise à zéro basique */
 * {
     margin: 0;
     padding: 0;
@@ -10,35 +9,38 @@ body, html {
     font-family: sans-serif;
 }
 
-/* Conteneur principal qui prend 100% de l'écran */
 #app-container {
     display: flex;
     flex-direction: column;
     height: 100vh;
 }
 
-/* La carte prend 70% de la hauteur */
 #map {
     flex: 7;
     position: relative;
     z-index: 1;
 }
 
-/* Le profil topo prend 30% */
 #topo-container {
     flex: 3;
     padding: 10px;
     background: #fff;
     border-top: 2px solid #ccc;
     z-index: 2;
+    position: relative; /* Nécessaire pour bien contraindre le canvas */
 }
 
-/* Style du gros bouton de géolocalisation */
+/* On force le canvas à prendre toute la place du conteneur */
+#topo-chart {
+    width: 100% !important;
+    height: 100% !important;
+}
+
 .btn-large {
     position: absolute;
     bottom: 20px;
     left: 20px;
-    z-index: 1000; /* Au-dessus de la carte Leaflet */
+    z-index: 1000;
     padding: 15px 20px;
     font-size: 18px;
     background-color: #0078A8;
@@ -56,5 +58,5 @@ body, html {
 }
 
 .btn-geoloc-active {
-    background-color: #d32f2f; /* Rouge quand l'enregistrement est actif */
+    background-color: #d32f2f;
 }
