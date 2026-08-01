@@ -8,7 +8,21 @@ ignRando.addTo(map);
 L.control.layers({ "IGN Rando": ignRando, "OpenStreetMap": osm }).addTo(map);
 
 let geojsonLine = null; // Stockera la ligne exploitée par Turf.js
-let hoverMarker = L.circleMarker([0, 0], { 
+
+// Données du profil topographique (rendues globales pour le suivi live)
+let profileDistances = [];   // distance cumulée (km) à chaque point
+let profileAltitudes = [];   // altitude lissée (m)
+let profileCumDplus = [];    // D+ cumulé (m) depuis le départ
+let totalDistanceKm = 0;
+let totalDplus = 0;
+
+// Position live projetée sur le profil
+let liveIndex = null;
+let topoChart = null;
+
+const OFFTRACK_THRESHOLD_M = 50; // seuil d'alerte hors-sentier
+
+let hoverMarker = L.circleMarker([0, 0], {
     radius: 8, 
     color: '#fff', 
     weight: 2, 
@@ -48,18 +62,23 @@ async function loadData() {
         const csvText = await csvRes.text();
         const rows = csvText.trim().split('\n');
         
-        const distances = [];
-        const altitudes = [];
-        
+        let cumDplus = 0;
         for (let i = 1; i < rows.length; i++) {
             const cols = rows[i].split(';');
             if (cols.length >= 3) {
-                distances.push(parseFloat(cols[0].replace(',', '.')));
-                altitudes.push(parseFloat(cols[2].replace(',', '.'))); 
+                profileDistances.push(parseFloat(cols[0].replace(',', '.')));
+                profileAltitudes.push(parseFloat(cols[2].replace(',', '.')));
+                // d_plus (colonne 4) = dénivelé positif du segment ; on cumule
+                const dPlus = cols.length >= 4 ? parseFloat(cols[3].replace(',', '.')) || 0 : 0;
+                cumDplus += dPlus;
+                profileCumDplus.push(cumDplus);
             }
         }
 
-        initChart(distances, altitudes);
+        totalDistanceKm = profileDistances[profileDistances.length - 1] || 0;
+        totalDplus = cumDplus;
+
+        initChart(profileDistances, profileAltitudes);
     } catch (error) {
         console.error("Erreur lors du chargement des données :", error);
     }
@@ -83,6 +102,34 @@ const verticalLinePlugin = {
             ctx.stroke();
             ctx.restore();
         }
+    }
+};
+
+// Plugin pour marquer la position GPS live (barre + point bleus) sur le profil
+const livePositionPlugin = {
+    id: 'livePosition',
+    afterDraw: chart => {
+        if (liveIndex === null || liveIndex < 0) return;
+        const x = chart.scales.x.getPixelForValue(liveIndex);
+        const y = chart.scales.y.getPixelForValue(profileAltitudes[liveIndex]);
+        const ctx = chart.ctx;
+        ctx.save();
+        // barre verticale bleue
+        ctx.beginPath();
+        ctx.moveTo(x, chart.scales.y.top);
+        ctx.lineTo(x, chart.scales.y.bottom);
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = 'rgba(0, 120, 168, 0.9)';
+        ctx.stroke();
+        // point de position
+        ctx.beginPath();
+        ctx.arc(x, y, 6, 0, 2 * Math.PI);
+        ctx.fillStyle = '#0078A8';
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
     }
 };
 
@@ -115,7 +162,7 @@ function initChart(distances, altitudes) {
         }
     };
 
-    new Chart(ctx, {
+    topoChart = new Chart(ctx, {
         type: 'line',
         data: {
             labels: distances,
@@ -149,8 +196,98 @@ function initChart(distances, altitudes) {
             // Gère le toucher (Mobile)
             onClick: (e, activeElements) => updateMapMarker(activeElements)
         },
-        plugins: [verticalLinePlugin]
+        plugins: [verticalLinePlugin, livePositionPlugin]
     });
+}
+
+// --- 3bis. SUIVI LIVE : projette la position GPS sur le tracé et le profil ---
+function updateLiveTracking(latlng) {
+    if (!geojsonLine) return;
+
+    // Point du tracé le plus proche + distance parcourue le long du GR
+    const userPt = turf.point([latlng[1], latlng[0]]); // turf = [lng, lat]
+    const snapped = turf.nearestPointOnLine(geojsonLine, userPt, { units: 'kilometers' });
+    const doneKm = snapped.properties.location;          // distance depuis le départ
+    const offTrackM = snapped.properties.dist * 1000;    // écart au tracé (m)
+
+    // Index du point de profil le plus proche de la distance parcourue
+    liveIndex = nearestProfileIndex(doneKm);
+
+    // Mise à jour du bandeau de stats
+    const leftKm = Math.max(0, totalDistanceKm - doneKm);
+    const dplusLeft = liveIndex !== null
+        ? Math.max(0, Math.round(totalDplus - profileCumDplus[liveIndex]))
+        : 0;
+    const pct = totalDistanceKm > 0 ? Math.round((doneKm / totalDistanceKm) * 100) : 0;
+    const altNow = liveIndex !== null ? Math.round(profileAltitudes[liveIndex]) : '–';
+
+    document.getElementById('live-stats').classList.remove('hidden');
+    document.getElementById('st-alt').textContent = altNow;
+    document.getElementById('st-done').textContent = doneKm.toFixed(1);
+    document.getElementById('st-left').textContent = leftKm.toFixed(1);
+    document.getElementById('st-dplus').textContent = dplusLeft;
+    document.getElementById('st-pct').textContent = pct + '%';
+
+    // Redessine le profil pour afficher la position live
+    if (topoChart) topoChart.render();
+
+    // Met à jour l'avancement des étapes planifiées du journal
+    updateStageProgress(doneKm);
+
+    // Alerte hors-sentier (#3)
+    const alertEl = document.getElementById('offtrack-alert');
+    if (offTrackM > OFFTRACK_THRESHOLD_M) {
+        if (alertEl.classList.contains('hidden')) {
+            if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+        }
+        alertEl.textContent = `⚠️ Hors sentier (${Math.round(offTrackM)} m)`;
+        alertEl.classList.remove('hidden');
+    } else {
+        alertEl.classList.add('hidden');
+    }
+}
+
+// Avancement automatique des étapes planifiées (journal de bord)
+// Une étape passe en "en cours" quand on franchit son km de départ,
+// et en "terminée" quand on franchit son km d'arrivée. Les horodatages
+// permettent de calculer durée et vitesse dans le journal.
+function updateStageProgress(doneKm) {
+    let data;
+    try {
+        data = JSON.parse(localStorage.getItem('rando_journal')) || { stages: [] };
+    } catch {
+        return;
+    }
+    if (!data.stages || data.stages.length === 0) return;
+
+    let changed = false;
+    const now = Date.now();
+    data.stages.forEach(s => {
+        if (doneKm >= s.endKm) {
+            if (!s.startedAt) { s.startedAt = now; changed = true; }
+            if (!s.finishedAt) { s.finishedAt = now; changed = true; }
+        } else if (doneKm >= s.startKm) {
+            if (!s.startedAt) { s.startedAt = now; changed = true; }
+        }
+    });
+
+    if (changed) localStorage.setItem('rando_journal', JSON.stringify(data));
+}
+
+// Recherche binaire de l'index de profil le plus proche d'une distance (km)
+function nearestProfileIndex(km) {
+    if (profileDistances.length === 0) return null;
+    let lo = 0, hi = profileDistances.length - 1;
+    while (lo < hi) {
+        const mid = (lo + hi) >> 1;
+        if (profileDistances[mid] < km) lo = mid + 1;
+        else hi = mid;
+    }
+    // compare le voisin précédent pour prendre le plus proche
+    if (lo > 0 && Math.abs(profileDistances[lo - 1] - km) < Math.abs(profileDistances[lo] - km)) {
+        return lo - 1;
+    }
+    return lo;
 }
 
 // --- 4. GÉOLOCALISATION ---
@@ -166,6 +303,11 @@ document.getElementById('btn-geoloc').addEventListener('click', function(e) {
         watchId = null;
         btn.textContent = "📍 Ma Position";
         btn.classList.remove('btn-geoloc-active');
+        // On masque le suivi live
+        liveIndex = null;
+        document.getElementById('live-stats').classList.add('hidden');
+        document.getElementById('offtrack-alert').classList.add('hidden');
+        if (topoChart) topoChart.render();
     } else {
         btn.textContent = "🛑 Stop Suivi";
         btn.classList.add('btn-geoloc-active');
@@ -187,6 +329,9 @@ document.getElementById('btn-geoloc').addEventListener('click', function(e) {
                 userTrack.push(latlng);
                 userPathLayer.setLatLngs(userTrack);
                 map.setView(latlng);
+
+                // #1 + #2 + #3 : projection sur profil, stats live et alerte hors-sentier
+                updateLiveTracking(latlng);
             },
             (err) => alert("Erreur GPS : Veuillez autoriser la localisation."),
             { enableHighAccuracy: true }

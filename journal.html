@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Journal - Rando Belle-Île</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0078A8">
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+    <div id="journal-page">
+        <header id="journal-header">
+            <a href="index.html" class="back-link">← Carte</a>
+            <h1>📖 Journal de bord</h1>
+        </header>
+
+        <section id="progress-box">
+            <div class="prog-numbers">
+                <div><span id="prog-km">0 / 0 km</span><small>parcouru</small></div>
+                <div><span id="prog-pct">0%</span><small>du tour</small></div>
+                <div><span id="prog-dplus">0 m</span><small>D+ cumulé</small></div>
+            </div>
+            <div class="prog-bar"><div id="prog-bar-fill"></div></div>
+        </section>
+
+        <section id="stage-list"></section>
+
+        <section id="add-box">
+            <h2>➕ Planifier une étape</h2>
+            <form id="add-form">
+                <input id="f-name" type="text" placeholder="Nom (ex. Le Palais → Sauzon)" required>
+                <div class="km-row">
+                    <input id="f-start" type="number" step="0.1" min="0" placeholder="km départ" required>
+                    <input id="f-end" type="number" step="0.1" min="0" placeholder="km arrivée" required>
+                </div>
+                <div id="f-preview"></div>
+                <button type="submit">Ajouter l'étape</button>
+            </form>
+        </section>
+
+        <section id="tools-box">
+            <button id="btn-export">⬇️ Exporter le journal (JSON)</button>
+        </section>
+    </div>
+
+    <script src="journal.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').catch(err => console.error(err));
+        }
+    </script>
+</body>
+</html>

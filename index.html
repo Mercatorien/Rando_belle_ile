@@ -16,6 +16,15 @@
     <div id="app-container">
         <div id="map">
             <button id="btn-geoloc" class="btn-large">📍 Ma Position</button>
+            <a href="journal.html" class="btn-journal">📖 Journal</a>
+            <div id="offtrack-alert" class="hidden">⚠️ Hors sentier</div>
+            <div id="live-stats" class="hidden">
+                <div class="stat"><span class="stat-val" id="st-alt">–</span><span class="stat-lbl">alt. (m)</span></div>
+                <div class="stat"><span class="stat-val" id="st-done">–</span><span class="stat-lbl">parcouru (km)</span></div>
+                <div class="stat"><span class="stat-val" id="st-left">–</span><span class="stat-lbl">restant (km)</span></div>
+                <div class="stat"><span class="stat-val" id="st-dplus">–</span><span class="stat-lbl">D+ restant (m)</span></div>
+                <div class="stat"><span class="stat-val" id="st-pct">–</span><span class="stat-lbl">% parcours</span></div>
+            </div>
         </div>
         <div id="topo-container">
             <canvas id="topo-chart"></canvas>
