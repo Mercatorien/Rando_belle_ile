@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <!-- Métadonnée essentielle pour l'ergonomie mobile -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Rando - Belle-Île</title>
+    
+    <!-- CSS de Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+    
+    <div id="app-container">
+        <!-- Zone de la carte -->
+        <div id="map">
+            <!-- Bouton de géolocalisation flottant -->
+            <button id="btn-geoloc" class="btn-large">📍 Ma Position</button>
+        </div>
+        
+        <!-- Zone du profil topographique -->
+        <div id="topo-container">
+            <canvas id="topo-chart"></canvas>
+        </div>
+    </div>
+
+    <!-- Bibliothèques JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- SheetJS pour lire le fichier Excel -->
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <!-- Turf.js pour calculer la position sur la ligne à partir de la distance -->
+    <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+    
+    <script src="app.js"></script>
+</body>
+</html>

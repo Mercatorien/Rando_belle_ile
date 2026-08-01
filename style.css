@@ -1,0 +1,60 @@
+/* Remise à zéro basique */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body, html {
+    height: 100%;
+    font-family: sans-serif;
+}
+
+/* Conteneur principal qui prend 100% de l'écran */
+#app-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+/* La carte prend 70% de la hauteur */
+#map {
+    flex: 7;
+    position: relative;
+    z-index: 1;
+}
+
+/* Le profil topo prend 30% */
+#topo-container {
+    flex: 3;
+    padding: 10px;
+    background: #fff;
+    border-top: 2px solid #ccc;
+    z-index: 2;
+}
+
+/* Style du gros bouton de géolocalisation */
+.btn-large {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    z-index: 1000; /* Au-dessus de la carte Leaflet */
+    padding: 15px 20px;
+    font-size: 18px;
+    background-color: #0078A8;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.btn-large:active {
+    background-color: #005f86;
+    transform: translateY(2px);
+}
+
+.btn-geoloc-active {
+    background-color: #d32f2f; /* Rouge quand l'enregistrement est actif */
+}
